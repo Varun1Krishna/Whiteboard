@@ -8,14 +8,17 @@
     "@testing-library/user-event": "^13.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.3",
     "react-scripts": "5.0.1",
+    "roughjs": "^4.6.6",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:css": "npx tailwindcss -i ./public/style.css -o ./temp_output.css && cat ./temp_output.css >> ./src/components/styles/output.css && rm ./temp_output.css"
   },
   "eslintConfig": {
     "extends": [
@@ -34,5 +37,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
   }
 }
