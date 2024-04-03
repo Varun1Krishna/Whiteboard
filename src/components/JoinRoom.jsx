@@ -9,12 +9,6 @@ function JoinRoom(props) {
             {props.name}
           </h2>
           <div className="mt-6 space-y-6">
-            <div className="relative">
-              <input
-                className="w-full rounded-[7px] border border-blue-gray-200 bg-transparent px-3 py-2.5 text-sm font-normal text-blue-gray-700 outline-none focus:border-2 focus:border-gray-900"
-                placeholder={props.placeholder1}
-              />
-            </div>
             <div className="relative flex items-center w-full rounded-[7px] bg-gray-100">
               <input
                 type="text"
