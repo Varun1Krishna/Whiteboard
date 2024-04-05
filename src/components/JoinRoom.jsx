@@ -1,6 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function JoinRoom(props) {
+  const navigate=useNavigate();
+  const [roomCode,setRoomCode]=useState('');
+
+  const handleChange=(event)=>{
+    setRoomCode(event.target.value);
+  }
+  const handleJoin=()=>{
+    navigate(`/${roomCode}`);
+  }
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-900">
       <div className="rounded-lg bg-gray-900">
@@ -12,6 +22,8 @@ function JoinRoom(props) {
             <div className="relative flex items-center w-full rounded-[7px] bg-gray-100">
               <input
                 type="text"
+                value={roomCode}
+                onChange={handleChange}
                 className="w-full rounded-[7px] border-t border-b border-l border-blue-gray-200 bg-transparent px-3 py-2.5 text-sm font-normal text-blue-gray-700 outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 placeholder={props.placeholder2}
               />
@@ -20,6 +32,7 @@ function JoinRoom(props) {
             <div className="flex justify-center">
               <button
                 type="submit"
+                onClick={handleJoin}
                 className="rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus:outline-none"
               >
                 {props.button}

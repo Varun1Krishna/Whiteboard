@@ -12,6 +12,8 @@ import {
   doc,
 } from "firebase/firestore";
 import Roompage from "./pages/Roompage";
+import {  toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function CreateRoom(props) {
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ function CreateRoom(props) {
   const [codeGenerated, setCodeGenerated] = useState(false);
   const [docId, setDocId] = useState(null); // Firestore document ID of the generated room
   const [isCopied, setIsCopied] = useState(false); 
+
   
   const handleCopy = () => {
     if (roomCode) {
@@ -48,7 +51,7 @@ function CreateRoom(props) {
 
   const handleGenerate = async () => {
     if (!props.isSignedIn) {
-      alert("Please sign in to generate a room code.");
+      toast("Please sign in to generate a room code.");
       return;
     }
 
@@ -74,12 +77,12 @@ function CreateRoom(props) {
 
   const createRoomAndNavigate = async () => {
     if (!props.isSignedIn) {
-      alert("Please sign in to create a room.");
+      toast("Please sign in to create a room.");
       return;
     }
 
     if (!codeGenerated) {
-      alert("Please generate a room code first.");
+      toast("Please generate a room code first.");
       return;
     }
 

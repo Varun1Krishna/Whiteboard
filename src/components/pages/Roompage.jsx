@@ -142,6 +142,7 @@ function Roompage(props) {
 
       <div>
         <Whiteboard
+          roomCode={roomCode}
           canvasRef={canvasRef}
           ctxRef={ctxRef}
           elements={elements}

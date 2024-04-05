@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import {  ToastContainer } from 'react-toastify';
 
 function Forms() {
   const auth = getAuth();
@@ -45,7 +46,9 @@ function Forms() {
   };
 
   return (
+    
     <div className="flex flex-col min-h-screen bg-gray-900">
+    <ToastContainer />
       <div className="w-full p-4 flex justify-between">
         {!isSignedIn && (
           <button
