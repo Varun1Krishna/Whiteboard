@@ -174,7 +174,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
-function DrawingCanvas() {
+function Whiteboard() {
   
   const socket = io("http://localhost:4000", {
     withCredentials: true,
@@ -325,4 +325,4 @@ useEffect(() => {
   );
 }
 
-export default DrawingCanvas;
+export default Whiteboard;
