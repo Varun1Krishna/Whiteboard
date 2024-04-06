@@ -10,20 +10,22 @@ function Whiteboard({roomCode}) {
   const [tool, setTool] = useState("pencil");
 
   useEffect(() => {
-    // Join the room
-    socket.emit('joinRoom', roomCode);
-
+    // Join the room and log acknowledgment for debugging
+    socket.emit('joinRoom', roomCode, (response) => {
+      console.log(response.status); // Should log "ok" if joining was successful
+    });
+  
     socket.on("drawing", (data) => {
-      // Make sure to only update if the drawing action is in the same room
       if(data.roomCode === roomCode) {
         setElements((prevElements) => [...prevElements, data]);
       }
     });
-
+  
     return () => {
       socket.off("drawing");
     };
-  }, [roomCode]); // Re-run the effect if roomCode changes
+  }, [roomCode]);
+  
 
   const drawPath = (ctx, path, stroke) => {
     if (path.length === 0) return; // Exit if the path is empty
