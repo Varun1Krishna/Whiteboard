@@ -1,132 +1,127 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:4000"); // Connect to your server
-
-function Whiteboard({roomCode}) {
+function Whiteboard({ roomCode }) {
+  const socket = io("http://localhost:4000", {
+    withCredentials: true,
+  });
   const canvasRef = useRef(null);
-  const [elements, setElements] = useState([]);
-  const [isDrawing, setIsDrawing] = useState(false);
+  const [ctx, setCtx] = useState(null);
+  let isDrawing = false;
   const [tool, setTool] = useState("pencil");
-
-  useEffect(() => {
-    // Join the room and log acknowledgment for debugging
-    socket.emit('joinRoom', roomCode, (response) => {
-      console.log(response.status); // Should log "ok" if joining was successful
-    });
-  
-    socket.on("drawing", (data) => {
-      if(data.roomCode === roomCode) {
-        setElements((prevElements) => [...prevElements, data]);
-      }
-    });
-  
-    return () => {
-      socket.off("drawing");
-    };
-  }, [roomCode]);
-  
-
-  const drawPath = (ctx, path, stroke) => {
-    if (path.length === 0) return; // Exit if the path is empty
-    ctx.beginPath();
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 2; // Set the line width or make it a parameter
-    // Move to the first point in the path
-    ctx.moveTo(path[0][0], path[0][1]);
-    // Loop through the path points and draw lines to each
-    path.forEach(([x, y]) => ctx.lineTo(x, y));
-    ctx.stroke(); // Apply the stroke to the path
-  };
-
-  const redrawElements = (ctx) => {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear the canvas
-    ctx.strokeStyle = "#cccccc";
-    ctx.strokeRect(50, 50, ctx.canvas.width - 100, ctx.canvas.height - 100);
-
-    elements.forEach((element) => {
-      if (element.type === "pencil") {
-        drawPath(ctx, element.path, "black");
-      } else if (element.type === "eraser") {
-        drawPath(ctx, element.path, "white"); // Assuming the canvas background is white
-      }
-      // Add more conditions here for other types of elements
-    });
-  };
+  let startPoint = { x: 0, y: 0 };
+  let lastX = 0; // Last X coordinate
+  let lastY = 0; // Last Y coordinate
+  let startNewLine = true;
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    socket.on("drawing", (data) => {
-      setElements((prevElements) => [...prevElements, data]);
-    });
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      redrawElements(ctx);
-    };
-
-    window.addEventListener("resize", resizeCanvas);
-    resizeCanvas();
-
-    return () => {
-      window.removeEventListener("resize", resizeCanvas);
-      socket.off("drawing");
-    };
+    const context = canvas.getContext("2d");
+    // Set up initial styles for drawing
+    context.lineWidth = 2;
+    context.strokeStyle = "black";
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    setCtx(context);
   }, []);
 
-  const handleDrawingEvent = (newElement) => {
-    // Include roomCode in the emitted event
-    socket.emit("drawing", { ...newElement, roomCode });
-  };
-
-  const handleMouseDown = (e) => {
-    const { offsetX, offsetY } = e.nativeEvent;
-    setIsDrawing(true);
-    const newElement = { type: tool, path: [[offsetX, offsetY]] };
-    setElements((prevElements) => [...prevElements, newElement]);
-    handleDrawingEvent(newElement);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDrawing) return;
-    const { offsetX, offsetY } = e.nativeEvent;
-    const updatedElements = elements.map((elem, index) => {
-      if (index === elements.length - 1) {
-        const newPath = [...elem.path, [offsetX, offsetY]];
-        const updatedElement = { ...elem, path: newPath, roomCode }; // Include roomCode here
-        if (isDrawing) handleDrawingEvent(updatedElement); // Emit updated drawing with roomCode
-        return updatedElement;
-      }
-      return elem;
-    });
-    setElements(updatedElements);
-  };
-
-  const handleMouseUp = () => {
-    setIsDrawing(false);
-  };
-
   useEffect(() => {
+    console.log("Roomcode: ", roomCode);
+    // Join the room as soon as the component mounts and the socket is available
+    if (roomCode) {
+      console.log(`Attempting to join room: ${roomCode}`);
+      socket.emit("joinRoom", { roomCode });
+    }
+
+    // Setup the canvas context
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    redrawElements(ctx);
-  }, [elements]);
-  // UI for selecting the tool
+    const context = canvas.getContext("2d");
+    context.lineWidth = 2;
+    context.strokeStyle = "black";
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    setCtx(context);
+
+    // Setup socket listeners for drawing and clearing the canvas
+    socket.on("cdn", (data) => {
+      console.log("Drawing data received from server: ",data);
+      drawSegment(data.from.x, data.from.y, data.to.x, data.to.y);
+    });
+
+    socket.on("clearCanvas", () => {
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    });
+
+    // return () => {
+    //   // Clean up: Leave the room and remove socket listeners
+    //   socket.emit("leaveRoom", { roomCode }); // Assuming you have a leaveRoom event on the server
+    //   socket.off("cdn");
+    //   socket.off("clearCanvas");
+    // };
+  }, [ctx, roomCode]); // Add roomCode as a dependency
+
+  const startDrawing = (event) => {
+    isDrawing = true;
+    const { offsetX, offsetY } = event.nativeEvent;
+    startPoint = { x: offsetX, y: offsetY };
+    lastX = offsetX; // Update lastX
+    lastY = offsetY; // Update lastY
+    startNewLine = false;
+  };
+
+  const draw = (event) => {
+    if (!isDrawing) return;
+    const { offsetX, offsetY } = event.nativeEvent;
+
+    if (tool === "pencil") {
+      drawSegment(lastX, lastY, offsetX, offsetY);
+
+      // Emit the drawing segment for real-time collaboration
+      socket.emit("cdn", {
+        from: { x: lastX, y: lastY },
+        to: { x: offsetX, y: offsetY },
+        roomCode,
+      });
+
+      lastX = offsetX; // Update lastX
+      lastY = offsetY; // Update lastY
+    }
+  };
+
+  const stopDrawing = () => {
+    isDrawing = false;
+    startNewLine = true;
+  };
+
+  const drawSegment = (startX, startY, endX, endY) => {
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+  };
+
+  const selectTool = (selectedTool) => {
+    setTool(selectedTool);
+  };
+
   return (
-    <div>
+    <div className="flex flex-col items-center">
       <canvas
         ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        width={window.innerWidth}
-        height={window.innerHeight}
-        style={{ width: "100%", height: "100%" }}
+        width={800} // Set your desired canvas width
+        height={600} // Set your desired canvas height
+        className="border border-gray-400"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseOut={stopDrawing}
+        onContextMenu={(event) => event.preventDefault()}
       />
     </div>
   );
 }
+
 export default Whiteboard;

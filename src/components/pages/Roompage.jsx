@@ -4,8 +4,12 @@ import Whiteboard from "../Whiteboard";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { getFirestore, deleteDoc, doc,getDoc } from "firebase/firestore";
+import io from "socket.io-client";
 
 function Roompage(props) {
+  const socket = io("http://localhost:4000", {
+    withCredentials: true,
+  });
   const location = useLocation();
   const docId = location.state?.docId;
   const navigate = useNavigate();
@@ -19,14 +23,16 @@ function Roompage(props) {
   const [roomCode, setRoomCode] = useState('');
 
   useEffect(() => {
+    console.log("docId: ",docId);
     const fetchRoomCode = async () => {
       if (docId) {
         const docRef = doc(db, "rooms", docId);
         const docSnap = await getDoc(docRef);
-
+        console.log("Inside if statement");
         if (docSnap.exists()) {
           // Set the room code to state
           setRoomCode(docSnap.data().code);
+          console.log("Fetched and set Room Code:", docSnap.data().code); // Add this line to verify
         } else {
           console.log("No such document!");
         }
@@ -57,6 +63,11 @@ function Roompage(props) {
       }
     }
   };
+  const handleClearCanvas = () => {
+    // Emit the clear event
+    socket.emit("clearCanvas", { roomCode });
+  };
+  console.log("Room Code in Roompage:",roomCode); // Add this line
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="flex flex-row justify-center items-center text-4xl font-bold mt-5 mb-8 w-full">
@@ -135,11 +146,11 @@ function Roompage(props) {
         <button className="px-4 py-2 bg-gray-500 rounded hover:bg-red-500 text-white mr-12">
           Redo
         </button>
-        <button className="px-4 py-2 bg-red-500 rounded hover:bg-red-600 text-white">
+        <button onClick={handleClearCanvas} className="px-4 py-2 bg-red-500 rounded hover:bg-red-600 text-white">
           Clear Canvas
         </button>
       </div>
-
+      
       <div>
         <Whiteboard
           roomCode={roomCode}

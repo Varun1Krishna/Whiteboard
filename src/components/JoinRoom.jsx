@@ -1,16 +1,35 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+
+// Initialize Firestore outside your component if not already initialized elsewhere
+const db = getFirestore();
 
 function JoinRoom(props) {
-  const navigate=useNavigate();
-  const [roomCode,setRoomCode]=useState('');
+  const navigate = useNavigate();
+  const [roomCode, setRoomCode] = useState('');
 
-  const handleChange=(event)=>{
+  // handleChange remains unchanged
+  const handleChange = (event) => {
     setRoomCode(event.target.value);
-  }
-  const handleJoin=()=>{
-    navigate(`/${roomCode}`);
-  }
+  };
+
+  // Adjusted handleJoin to fetch room details when the button is clicked
+  const handleJoin = async () => {
+    const q = query(collection(db, "rooms"), where("code", "==", roomCode.toUpperCase()));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      const docId = doc.id; // Extract docId here
+      console.log("docId: ",docId);
+      // Navigate to the room with docId as state
+      navigate(`/${roomCode}`, { state: { docId: docId, code: roomCode } });
+    } else {
+      console.log("No matching document found for roomCode:", roomCode);
+      // Optionally handle the case where no room is found (e.g., show an alert)
+    }
+  };
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-900">
       <div className="rounded-lg bg-gray-900">

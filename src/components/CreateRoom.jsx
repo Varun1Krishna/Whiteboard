@@ -85,7 +85,7 @@ function CreateRoom(props) {
       toast("Please generate a room code first.");
       return;
     }
-
+    console.log("docId: ",docId);
     navigate(`/${roomCode}`, { state: { docId } });
   };
 
