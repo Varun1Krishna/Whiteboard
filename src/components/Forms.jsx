@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import CreateRoom from "./CreateRoom";
 import JoinRoom from "./JoinRoom";
-import { getAuth, signInWithPopup, GoogleAuthProvider ,signOut} from "firebase/auth";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+} from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -11,7 +16,7 @@ import {
   where,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import {  ToastContainer } from 'react-toastify';
+import { ToastContainer } from "react-toastify";
 
 function Forms() {
   const auth = getAuth();
@@ -26,12 +31,14 @@ function Forms() {
   }, []);
 
   const handleSignOut = () => {
-    signOut(auth).then(() => {
-      console.log('User signed out successfully');
-      navigate('/'); // Navigate after sign-out
-    }).catch((error) => {
-      console.error('Sign out error', error);
-    });
+    signOut(auth)
+      .then(() => {
+        console.log("User signed out successfully");
+        navigate("/"); // Navigate after sign-out
+      })
+      .catch((error) => {
+        console.error("Sign out error", error);
+      });
   };
 
   const handleSignIn = async () => {
@@ -46,9 +53,8 @@ function Forms() {
   };
 
   return (
-    
     <div className="flex flex-col min-h-screen bg-gray-900">
-    <ToastContainer />
+      <ToastContainer closeOnClick/>
       <div className="w-full p-4 flex justify-between">
         {!isSignedIn && (
           <button

@@ -1,9 +1,14 @@
 import React, { useRef, useState, useEffect } from "react";
-import { useLocation } from 'react-router-dom';
+import { useLocation } from "react-router-dom";
 import Whiteboard from "../Whiteboard";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+} from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { getFirestore, deleteDoc, doc,getDoc } from "firebase/firestore";
+import { getFirestore, deleteDoc, doc, getDoc } from "firebase/firestore";
 import io from "socket.io-client";
 
 function Roompage(props) {
@@ -20,10 +25,10 @@ function Roompage(props) {
   const [elements, setElements] = useState([]);
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
-  const [roomCode, setRoomCode] = useState('');
+  const [roomCode, setRoomCode] = useState("");
 
   useEffect(() => {
-    console.log("docId: ",docId);
+    console.log("docId: ", docId);
     const fetchRoomCode = async () => {
       if (docId) {
         const docRef = doc(db, "rooms", docId);
@@ -51,23 +56,26 @@ function Roompage(props) {
   //   });
   // };
 
+  const copyToClipboard = () => {
+    navigator.clipboard
+      .writeText(roomCode)
+      .then(() => {
+        console.log("Room code copied to clipboard");
+        // Optionally, you can show some feedback to the user here.
+      })
+      .catch((err) => {
+        console.error("Could not copy text: ", err);
+      });
+  };
+
   const handleExit = async () => {
-    if (docId) {
-      try {
-        await deleteDoc(doc(db, "rooms", docId));
-        console.log("Room deleted successfully");
-        navigate('/');
-      } catch (error) {
-        console.error("Error deleting room:", error);
-        navigate('/');
-      }
-    }
+    navigate("/");
   };
   const handleClearCanvas = () => {
     // Emit the clear event
     socket.emit("clearCanvas", { roomCode });
   };
-  console.log("Room Code in Roompage:",roomCode); // Add this line
+  console.log("Room Code in Roompage:", roomCode); // Add this line
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="flex flex-row justify-center items-center text-4xl font-bold mt-5 mb-8 w-full">
@@ -146,11 +154,14 @@ function Roompage(props) {
         <button className="px-4 py-2 bg-gray-500 rounded hover:bg-red-500 text-white mr-12">
           Redo
         </button>
-        <button onClick={handleClearCanvas} className="px-4 py-2 bg-red-500 rounded hover:bg-red-600 text-white">
+        <button
+          onClick={handleClearCanvas}
+          className="px-4 py-2 bg-red-500 rounded hover:bg-red-600 text-white"
+        >
           Clear Canvas
         </button>
       </div>
-      
+
       <div>
         <Whiteboard
           roomCode={roomCode}

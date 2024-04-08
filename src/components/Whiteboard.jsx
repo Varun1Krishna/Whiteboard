@@ -54,12 +54,13 @@ function Whiteboard({ roomCode }) {
       }
     });
 
-    // return () => {
-    //   // Clean up: Leave the room and remove socket listeners
-    //   socket.emit("leaveRoom", { roomCode }); // Assuming you have a leaveRoom event on the server
-    //   socket.off("cdn");
-    //   socket.off("clearCanvas");
-    // };
+    return () => {
+      // Clean up: Leave the room and remove socket listeners
+      socket.emit("leaveRoom", { roomCode });
+      socket.disconnect(); 
+      socket.off("cdn");
+      socket.off("clearCanvas");
+    };
   }, [ctx, roomCode]); // Add roomCode as a dependency
 
   const startDrawing = (event) => {

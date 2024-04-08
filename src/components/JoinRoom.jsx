@@ -1,13 +1,21 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
 // Initialize Firestore outside your component if not already initialized elsewhere
 const db = getFirestore();
 
 function JoinRoom(props) {
   const navigate = useNavigate();
-  const [roomCode, setRoomCode] = useState('');
+  const [roomCode, setRoomCode] = useState("");
 
   // handleChange remains unchanged
   const handleChange = (event) => {
@@ -16,18 +24,33 @@ function JoinRoom(props) {
 
   // Adjusted handleJoin to fetch room details when the button is clicked
   const handleJoin = async () => {
-    const q = query(collection(db, "rooms"), where("code", "==", roomCode.toUpperCase()));
-    const querySnapshot = await getDocs(q);
+    if (!roomCode.trim()) {
+      toast.error("Room code cannot be empty.");
+      return;
+    }
+    try {
+      const q = query(
+        collection(db, "rooms"),
+        where("code", "==", roomCode.toUpperCase())
+      );
+      const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      const docId = doc.id; // Extract docId here
-      console.log("docId: ",docId);
-      // Navigate to the room with docId as state
-      navigate(`/${roomCode}`, { state: { docId: docId, code: roomCode } });
-    } else {
-      console.log("No matching document found for roomCode:", roomCode);
-      // Optionally handle the case where no room is found (e.g., show an alert)
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const docId = doc.id; // Extract docId here
+        console.log("docId: ", docId);
+        // Navigate to the room with docId as state
+        navigate(`/${roomCode}`, { state: { docId: docId, code: roomCode } });
+      } else {
+        toast("Invalid Room Code!");
+        console.log("No matching document found for roomCode:", roomCode);
+        // Optionally handle the case where no room is found (e.g., show an alert)
+      }
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      toast.error(
+        "An error occurred while joining the room. Please try again."
+      );
     }
   };
   return (
