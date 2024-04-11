@@ -6,6 +6,7 @@ function Whiteboard({ roomCode }) {
     withCredentials: true,
   });
   const canvasRef = useRef(null);
+  const [userCount, setUserCount] = useState(0);
   const [ctx, setCtx] = useState(null);
   let isDrawing = false;
   const [tool, setTool] = useState("pencil");
@@ -54,6 +55,11 @@ function Whiteboard({ roomCode }) {
       }
     });
 
+    socket.on("updateUserCount", (count) => {
+      console.log("Updated Roomcount: ", count);
+      setUserCount(count);
+    });
+
     return () => {
       // Clean up: Leave the room and remove socket listeners
       socket.emit("leaveRoom", { roomCode });
@@ -72,7 +78,7 @@ function Whiteboard({ roomCode }) {
     startNewLine = false;
   };
 
-  const draw = (event) => {
+  const draw = (event) => { 
     if (!isDrawing) return;
     const { offsetX, offsetY } = event.nativeEvent;
 
@@ -110,6 +116,12 @@ function Whiteboard({ roomCode }) {
 
   return (
     <div className="flex flex-col items-center">
+    <div className="flex-grow">
+        {/* Attempting to make the text more visible with additional styling */}
+        <span className="text-2xl font-bold text-green p-2 rounded">
+          User's Online: [{userCount}]
+        </span>
+      </div>
       <canvas
         ref={canvasRef}
         width={800} // Set your desired canvas width

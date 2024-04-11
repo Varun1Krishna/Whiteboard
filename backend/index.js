@@ -12,9 +12,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-// Object to map socket IDs to room codes
 const socketRoomMap = {};
-
 const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
@@ -24,17 +22,19 @@ const io = require("socket.io")(server, {
   },
 });
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
+app.use(cors({
+  origin: true,
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+}));
 
-// Object to keep track of the number of users in each room
 const roomUserCounts = {};
+
+// Define the function at the top level
+function updateUserCountInRoom(roomCode) {
+  io.in(roomCode).emit("updateUserCount", roomUserCounts[roomCode] || 0);
+}
 
 io.on("connection", (socket) => {
   console.log("A user connected");
@@ -42,16 +42,9 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", ({ roomCode }) => {
     socket.join(roomCode);
     socketRoomMap[socket.id] = roomCode;
-
-    if (roomUserCounts[roomCode]) {
-      roomUserCounts[roomCode]++;
-    } else {
-      roomUserCounts[roomCode] = 1;
-    }
-    console.log(roomUserCounts[roomCode]);
-    console.log(
-      `User ${socket.id} joined room: ${roomCode}, Room count: ${roomUserCounts[roomCode]}`
-    );
+    roomUserCounts[roomCode] = (roomUserCounts[roomCode] || 0) + 1;
+    console.log(`User ${socket.id} joined room: ${roomCode}, Room count: ${roomUserCounts[roomCode]}`);
+    updateUserCountInRoom(roomCode);
   });
 
   socket.on("cdn", (msg) => {
@@ -64,82 +57,46 @@ io.on("connection", (socket) => {
     console.log(`Canvas cleared in room: ${roomCode}`);
   });
 
+  function attemptToDeleteRoom(roomCode) {
+    if (roomUserCounts[roomCode] === 0) {
+      setTimeout(async () => {
+        if (roomUserCounts[roomCode] === 0) {
+          delete roomUserCounts[roomCode];
+          const roomsRef = db.collection("rooms");
+          const snapshot = await roomsRef.where("code", "==", roomCode).get();
+          if (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            console.log(`Room(s) with roomCode: ${roomCode} deleted from Firestore.`);
+          }
+          io.in(roomCode).emit("updateUserCount", 0); // Update after final check
+        } else {
+          updateUserCountInRoom(roomCode); // If not deleted, update with the latest count
+        }
+      }, 5000); // 5-second delay
+    }
+  }
+
   socket.on("leaveRoom", async ({ roomCode }) => {
     socket.leave(roomCode);
     delete socketRoomMap[socket.id];
-
-    // Decrement the user count for this room
     if (roomUserCounts[roomCode]) {
       roomUserCounts[roomCode]--;
-
-      if (roomUserCounts[roomCode] === 0) {
-        console.log(`Room ${roomCode} is now empty and will be deleted.`);
-        delete roomUserCounts[roomCode];
-
-        // Query and delete the room from Firestore
-        const roomsRef = db.collection("rooms");
-        const snapshot = await roomsRef.where("code", "==", roomCode).get(); // Assuming 'code' is the field name in Firestore documents
-
-        if (!snapshot.empty) {
-          const batch = db.batch();
-
-          snapshot.forEach((doc) => {
-            batch.delete(doc.ref);
-          });
-
-          await batch.commit();
-          console.log(
-            `Room(s) with roomCode: ${roomCode} deleted from Firestore.`
-          );
-        } else {
-          console.log(`No room found with roomCode: ${roomCode} for deletion.`);
-        }
-      } else {
-        console.log(
-          `User ${socket.id} left room: ${roomCode}, Room count: ${roomUserCounts[roomCode]}`
-        );
-      }
+      console.log(`User ${socket.id} left room: ${roomCode}, Room count: ${roomUserCounts[roomCode]}`);
+      updateUserCountInRoom(roomCode); // Update immediately when a user leaves
+      attemptToDeleteRoom(roomCode);
     }
   });
 
-  socket.on("disconnect", async () => {
+  socket.on("disconnect", () => {
     const roomCode = socketRoomMap[socket.id];
-    // Decrement the user count for this room
-    if (roomCode) {
-      if (roomUserCounts[roomCode]) {
-        roomUserCounts[roomCode]--;
-        if (roomUserCounts[roomCode] === 0) {
-          delete roomUserCounts[roomCode];
-          // Query and delete the room from Firestore
-          const roomsRef = db.collection("rooms");
-          const snapshot = await roomsRef.where("code", "==", roomCode).get(); // Assuming 'code' is the field name in Firestore documents
-
-          if (!snapshot.empty) {
-            const batch = db.batch();
-
-            snapshot.forEach((doc) => {
-              batch.delete(doc.ref);
-            });
-
-            await batch.commit();
-            console.log(
-              `Room(s) with roomCode: ${roomCode} deleted from Firestore.`
-            );
-          } else {
-            console.log(
-              `No room found with roomCode: ${roomCode} for deletion.`
-            );
-          }
-        } else {
-          console.log(
-            "User disconnected:",
-            socket.id,
-            " Room count: ",
-            roomUserCounts[roomCode]
-          );
-        }
-      }
-      delete socketRoomMap[socket.id];
+    delete socketRoomMap[socket.id];
+    if (roomCode && roomUserCounts[roomCode]) {
+      roomUserCounts[roomCode]--;
+      console.log("User disconnected:", socket.id, " Room count: ", roomUserCounts[roomCode]);
+      updateUserCountInRoom(roomCode); // Update immediately on disconnect
+      attemptToDeleteRoom(roomCode);
     }
   });
 });
@@ -149,6 +106,4 @@ app.get("/", (req, res) => {
 });
 
 const port = 4000;
-server.listen(port, () =>
-  console.log(`Server running at http://localhost:${port}`)
-);
+server.listen(port, () => console.log(`Server running at http://localhost:${port}`));
